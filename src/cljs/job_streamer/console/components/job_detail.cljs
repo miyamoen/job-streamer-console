@@ -136,6 +136,28 @@
      (clj->js {:toolbox "<xml></xml>"
                :readOnly true}))))
 
+(defn stop-job [job]
+  (when-let [latest-execution (:job/latest-execution job)]
+    (api/request (str "/" app-name
+                      "/job/" (:job/name job)
+                      "/execution/" (:db/id latest-execution) "/stop")
+                 :PUT
+                 {:handler (fn [response]
+                             (om/update! latest-execution
+                                         [:job-execution/batch-status :db/ident]
+                                         :batch-status/stopping))})))
+
+(defn abandon-job [job]
+  (when-let [latest-execution (:job/latest-execution job)]
+    (api/request (str "/" app-name
+                      "/job/" (:job/name job)
+                      "/execution/" (:db/id latest-execution) "/abandon")
+                 :PUT
+                 {:handler (fn [response]
+                             (om/update! latest-execution
+                                         [:job-execution/batch-status :db/ident]
+                                         :batch-status/abandoned))})))
+
 (defn status-color [status]
   (case status
     :batch-status/completed "green"

@@ -7,7 +7,7 @@
             (job-streamer.console.format :as fmt)
             (job-streamer.console.api :as api))
   (:use (job-streamer.console.components.timeline :only [timeline-view])
-        (job-streamer.console.components.job-detail :only [job-new-view job-detail-view])
+        (job-streamer.console.components.job-detail :only [job-new-view job-detail-view stop-job abandon-job])
         (job-streamer.console.components.execution :only [execution-view])
         (job-streamer.console.components.pagination :only [pagination-view])
         (job-streamer.console.components.dialog :only[dangerously-action-dialog])
@@ -21,28 +21,6 @@
                parameters
                {:handler (fn [response]
                            (put! channel [:close-dialog nil]))}))
-
-(defn stop-job [job]
-  (when-let [latest-execution (:job/latest-execution job)]
-    (api/request (str "/" app-name
-                      "/job/" (:job/name job)
-                      "/execution/" (:db/id latest-execution) "/stop")
-                 :PUT
-                 {:handler (fn [response]
-                             (om/update! latest-execution
-                                         [:job-execution/batch-status :db/ident]
-                                         :batch-status/stopping))})))
-
-(defn abandon-job [job]
-  (when-let [latest-execution (:job/latest-execution job)]
-    (api/request (str "/" app-name
-                      "/job/" (:job/name job)
-                      "/execution/" (:db/id latest-execution) "/abandon")
-                 :PUT
-                 {:handler (fn [response]
-                             (om/update! latest-execution
-                                         [:job-execution/batch-status :db/ident]
-                                         :batch-status/abandoned))})))
 
 (defn restart-job [job parameters channel]
   (when-let [latest-execution (:job/latest-execution job)]
