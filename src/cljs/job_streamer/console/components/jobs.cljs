@@ -7,7 +7,7 @@
             (job-streamer.console.format :as fmt)
             (job-streamer.console.api :as api))
   (:use (job-streamer.console.components.timeline :only [timeline-view])
-        (job-streamer.console.components.job-detail :only [job-new-view job-detail-view stop-job abandon-job])
+        (job-streamer.console.components.job-detail :only [job-new-view job-detail-view stop-job abandon-job job-execution-button-view])
         (job-streamer.console.components.execution :only [execution-view])
         (job-streamer.console.components.pagination :only [pagination-view])
         (job-streamer.console.components.dialog :only[dangerously-action-dialog])
@@ -108,8 +108,7 @@
                    not-empty)
             (let [page (om/get-state owner :page)
                   per  (om/get-state owner :per)]
-              (search-jobs app {:q (:query app) :sort-by (-> app :job-sort-order parse-sort-order) :offset (inc (* (dec page) per)) :limit per})
-              {:page page}))
+              (search-jobs app {:q (:query @app) :sort-by (-> @app :job-sort-order parse-sort-order) :offset (inc (* (dec page) per)) :limit per})))
           (put! ch :continue)
           (recur)))
       (put! ch :start)))
@@ -262,45 +261,8 @@
                         (if-let [next-execution (:job/next-execution job)]
                           (fmt/date-medium (:job-execution/start-time next-execution))
                           "-")]
-                       [:td (let [status (get-in job [:job/latest-execution :job-execution/batch-status :db/ident])]
-                              (cond
-                                (#{:batch-status/undispatched :batch-status/unrestarted :batch-status/queued :batch-status/started} status)
-                                [:div.ui.fade.reveal
-                                 [:button.ui.circular.orange.icon.button.visible.content
-                                  {:on-click (fn [_]
-                                               (if (#{:batch-status/started} status)
-                                                 (stop-job job)
-                                                 (abandon-job job)))}
-                                  [:i.setting.loading.icon]]
-                                 [:button.ui.circular.red.icon.basic.button.hidden.content
-                                  (if (#{:batch-status/started} status)
-                                    [:i.pause.icon]
-                                    [:i.stop.icon])]]
-
-                                (#{:batch-status/stopped :batch-status/failed} status)
-                                [:div
-                                 [:button.ui.circular.red.icon.basic.button
-                                  {:on-click (fn [_]
-                                               (abandon-job job))}
-                                  [:i.stop.icon]]
-                                 [:button.ui.circular.yellow.icon.basic.button
-                                  {:title "restart"
-                                   :on-click (fn [_]
-                                               (api/request (str "/" app-name "/job/" job-name)
-                                                            {:handler (fn [job]
-                                                                        (put! jobs-view-channel [:restart-dialog job]))}))}
-                                  [:i.play.icon]]]
-
-                                (#{:batch-status/starting  :batch-status/stopping} status)
-                                [:div]
-
-                                :else
-                                [:button.ui.circular.icon.green.basic.button
-                                 {:on-click (fn [_]
-                                              (api/request (str "/" app-name "/job/" job-name)
-                                                           {:handler (fn [job]
-                                                                       (put! jobs-view-channel [:execute-dialog job]))}))}
-                                 [:i.play.icon]]))]]
+                       [:td (om/build job-execution-button-view job {:state {:jobs-view-channel jobs-view-channel}
+                                                                     :react-key "job-execution-button"})]]
                       (when-let [step-executions (not-empty (get-in job [:job/latest-execution :job-execution/step-executions]))]
                         [:tr
                          [:td {:colSpan 8}
@@ -392,11 +354,11 @@
                            job-list-view)
                          app {:init-state {:jobs-view-channel jobs-channel}
                               :state {:page page}
-                              :react-key "job-mode"}))]]
-           (when executing-job
+                              :react-key "job-mode"}))]]])
+        (when executing-job
              (om/build job-execution-dialog executing-job {:init-state {:jobs-view-channel jobs-channel}
                                                            :state {:page page}
-                                                           :react-key "job-execution-dialog"}))])
+                                                           :react-key "job-execution-dialog"}))
         (when dangerously-action-data
           (om/build dangerously-action-dialog nil
                     {:opts (assoc dangerously-action-data

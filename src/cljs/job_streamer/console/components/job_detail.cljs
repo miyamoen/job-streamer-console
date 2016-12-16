@@ -320,6 +320,50 @@
                                                                             (om/set-state! owner :executions executions))))}
                                :react-key "job-histry-pagination"})]]])))
 
+(defcomponent job-execution-button-view [job owner]
+  (render-state [_ {:keys [jobs-view-channel mode]}]
+    (html
+      (let [status (get-in job [:job/latest-execution :job-execution/batch-status :db/ident])
+            job-name (:job/name job)]
+        (cond
+          (#{:batch-status/undispatched :batch-status/unrestarted :batch-status/queued :batch-status/started} status)
+            [:div.ui.fade.reveal
+              [:button.ui.circular.orange.icon.button.visible.content
+                {:on-click (fn [_]
+                             (if (#{:batch-status/started} status)
+                               (stop-job job)
+                               (abandon-job job)))}
+                [:i.setting.loading.icon]]
+              [:button.ui.circular.red.icon.basic.button.hidden.content
+                (if (#{:batch-status/started} status)
+                  [:i.pause.icon]
+                  [:i.stop.icon])]]
+
+          (#{:batch-status/stopped :batch-status/failed} status)
+            [:div
+              [:button.ui.circular.red.icon.basic.button
+                {:on-click (fn [_]
+                             (abandon-job job))}
+                [:i.stop.icon]]
+              [:button.ui.circular.yellow.icon.basic.button
+                {:title "restart"
+                  :on-click (fn [_]
+                              (api/request (str "/" app-name "/job/" job-name)
+                                {:handler (fn [job]
+                                            (put! jobs-view-channel [:restart-dialog job]))}))}
+                [:i.play.icon]]]
+
+          (#{:batch-status/starting :batch-status/stopping} status)
+            [:div]
+
+          :else
+            [:button.ui.circular.icon.green.basic.button
+              {:on-click (fn [_]
+                           (api/request (str "/" app-name "/job/" job-name)
+                             {:handler (fn [job]
+                                         (put! jobs-view-channel [:execute-dialog job]))}))}
+              [:i.play.icon]])))))
+
 (defcomponent scheduling-view [job owner]
   (init-state [_]
     {:error-ch (chan)
@@ -494,7 +538,10 @@
                              [:div.label "Success"]]
                             [:div.statistic
                              [:div.value (get-in job-detail [:job/stats :failure])]
-                             [:div.label "Failed"]]]
+                             [:div.label "Failed"]]
+                            [:div.statistic
+                             [:div.value (om/build job-execution-button-view job {:state {:jobs-view-channel (:jobs-channel opts) :mode mode}
+                                                                                  :react-key "job-execution-button"})]]]
                            [:hr.ui.divider]
                            [:div.ui.tiny.horizontal.statistics
                             [:div.statistic
