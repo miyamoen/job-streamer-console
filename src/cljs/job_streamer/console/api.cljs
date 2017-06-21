@@ -15,6 +15,14 @@
                          (querySelector "meta[name=control-bus-url]")
                          (getAttribute "content")))
 
+(def authentication-url (.. js/document
+                            (querySelector "meta[name=authentication-url]")
+                            (getAttribute "content")))
+
+(def access-token (.. js/document
+                      (querySelector "meta[name=access-token]")
+                      (getAttribute "content")))
+
 (defn url-for [path]
   (if (gstring/startsWith path "/")
     (str control-bus-url path)
@@ -78,7 +86,9 @@
      (.setWithCredentials xhrio true)
      (.send xhrio (url-for path) (.toLowerCase (name method))
             body
-            (case format
-              :xml (clj->js {:content-type "application/xml"})
-              (clj->js {:content-type "application/edn"}))))))
+            (clj->js (merge
+              (case format
+                :xml {:content-type "application/xml"}
+                {:content-type "application/edn"})
+              (when access-token {:authorization (str "Bearer " access-token)})))))))
 

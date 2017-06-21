@@ -24,7 +24,8 @@
 
                  [ring "1.4.0"]
                  [ring/ring-defaults "0.2.0"]
-                 [ring-jetty-component "0.3.1"]]
+                 [ring-jetty-component "0.3.1"]
+                 [clojusc/friend-oauth2 "0.2.0"]]
   :plugins [[lein-cljsbuild "1.1.2"]
             [lein-environ "1.0.3"]]
 

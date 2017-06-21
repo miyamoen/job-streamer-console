@@ -4,15 +4,19 @@
             [ring.util.response :refer [resource-response content-type header]]
             [environ.core :refer [env]]
             [clojure.tools.logging :as log]
+            [friend-oauth2.util :as outil]
             (job-streamer.console [style :as style]
                                   [jobxml :as jobxml])))
 
-(defn layout [config & body]
+(defn layout [request config & body]
   (html5
    [:head
     [:meta {:charset "utf-8"}]
     [:meta {:http-equiv "X-UA-Compatible" :content "IE=edge,chrome=1"}]
     [:meta {:name "control-bus-url" :content (:control-bus-url config)}]
+    [:meta {:name "access-token" :content (get-in request [:session :access-token])}]
+    [:meta {:name "authentication-url" :content (outil/format-authn-uri (:uri-config config)
+                                                                        (get-in request [:session :state]))}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1, maximum-scale=1"}]
     (include-css "//cdn.jsdelivr.net/semantic-ui/2.0.3/semantic.min.css"
                  "/css/vendors/vis.min.css"
@@ -26,14 +30,14 @@
       (include-js "/react/react.js"))]
    [:body body]))
 
-(defn index [config]
-  (layout config
+(defn index [request config]
+  (layout request config
    [:div#app.ui.full.height.page]
    (include-js (str "/js/job-streamer"
                     (when-not (:dev env) ".min") ".js"))))
 
-(defn login-view [config]
-  (layout config
+(defn login-view [request config]
+  (layout request config
    [:div#login.ui.full.height.page]
    (include-js (str "/js/job-streamer"
                     (when-not (:dev env) ".min") ".js"))))
@@ -93,8 +97,8 @@
         [app-name job-name]
         (flowchart config job-name))
 
-   (GET "/" [] (index config))
-   (GET "/login" [] (login-view config))
+   (GET "/" [:as request] (index request config))
+   (GET "/login" [:as request] (login-view request config))
    (POST "/job/from-xml" [:as request]
      (when-let [body (:body request)]
        (let [xml (slurp body)]

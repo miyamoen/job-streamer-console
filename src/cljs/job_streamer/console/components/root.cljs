@@ -356,35 +356,46 @@
           [:div.header.item [:img.ui.image {:alt "JobStreamer" :src "/img/logo.png"}]]]
         [:div.main.grid.content.full.height
           [:div.ui.middle.aligned.center.aligned.login.grid
-           [:div.column
-            [:h2.ui.header
-             [:div.content
-              [:img.ui.image {:src "/img/logo.png"}]]]
-            [:form.ui.large.login.form
-             (merge {:on-submit (fn [e]
-                                  (.preventDefault e)
-                                  (api/request (api/url-for "/auth") :POST
-                                                    {:user/id username :user/password password}
-                                                    {:handler #(set! (.-href js/location) "/")
-                                                     :error-handler #(om/set-state! owner :errors (or (:messages %)
-                                                                                                      ["A Control bus is NOT found."]))
-                                                     :unauthorized-handler #(om/set-state! owner :errors (:messages %))}))}
-                    (when errors {:class "error"}))
-             [:div.ui.stacked.segment
-              [:div.ui.error.message
-               (map #(vec [:p %]) errors)]
-              [:div.field
-               [:div.ui.left.icon.input
-                [:i.user.icon]
-                [:input {:type "text" :name "username" :id "username" :placeholder "User name" :value username
-                         :on-change (fn [e]
-                                      (let [username (.. js/document (getElementById "username") -value)]
-                                        (om/set-state! owner :username username)))}]]]
-              [:div.field
-               [:div.ui.left.icon.input
-                [:i.lock.icon]
-                [:input {:type "password" :name "password" :id "password" :placeholder "Password" :value password
-                         :on-change (fn [e]
-                                      (let [password (.. js/document (getElementById "password") -value)]
-                                        (om/set-state! owner :password password)))}]]]
-              [:button.ui.fluid.large.teal.submit.button{:type "submit"} "Login"]]]]]]])))
+           [:div.row
+            [:div.column
+             [:h2.ui.header.dimmer
+              [:div.content
+               [:img.ui.image {:src "/img/logo.png"}]]]
+             [:form.ui.large.login.form
+              (merge {:on-submit (fn [e]
+                                   (.preventDefault e)
+                                   (api/request (api/url-for "/auth") :POST
+                                                     {:user/id username :user/password password}
+                                                     {:handler #(set! (.-href js/location) "/")
+                                                      :error-handler #(om/set-state! owner :errors (or (:messages %)
+                                                                                                       ["A Control bus is NOT found."]))
+                                                      :unauthorized-handler #(om/set-state! owner :errors (:messages %))}))}
+                     (when errors {:class "error"}))
+              [:div.ui.stacked.segment
+               [:div.ui.error.message
+                (map #(vec [:p %]) errors)]
+               [:div.field
+                [:div.ui.left.icon.input
+                 [:i.user.icon]
+                 [:input {:type "text" :name "username" :id "username" :placeholder "User name" :value username
+                          :on-change (fn [e]
+                                       (let [username (.. e -target -value)]
+                                         (om/set-state! owner :username username)))}]]]
+               [:div.field
+                [:div.ui.left.icon.input
+                 [:i.lock.icon]
+                 [:input {:type "password" :name "password" :id "password" :placeholder "Password" :value password
+                          :on-change (fn [e]
+                                       (let [password (.. e -target -value)]
+                                         (om/set-state! owner :password password)))}]]]
+               [:button.ui.fluid.large.teal.submit.button {:type "submit"} "Login"]]]]]
+
+           (when api/authentication-url
+             [:div.row
+              [:div.column
+               [:form.ui.large.login.form
+                {:on-submit (fn [e]
+                              (.preventDefault e)
+                              (set! (.-href js/location) api/authentication-url))}
+                [:div.ui.stacked.segment
+                 [:button.ui.fluid.large.teal.submit.button {:type "submit"} "Get Authorized"]]]]])]]])))
